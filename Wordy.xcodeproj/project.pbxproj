@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		BA3E9FF12EDB958200C3C43B /* VocabLearner.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = BA3E9FEF2EDB958200C3C43B /* VocabLearner.xcdatamodeld */; };
+		BA462B432EDD09F4000C6FE6 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = BA462B422EDD09EB000C6FE6 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +33,7 @@
 		BA3E9FD22EDB94EF00C3C43B /* WordyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WordyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA3E9FDC2EDB94EF00C3C43B /* WordyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WordyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA3E9FF02EDB958200C3C43B /* VocabLearner.xcdatamodel */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcdatamodel; path = VocabLearner.xcdatamodel; sourceTree = "<group>"; };
+		BA462B422EDD09EB000C6FE6 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -80,6 +82,7 @@
 		BA3E9FB72EDB94ED00C3C43B = {
 			isa = PBXGroup;
 			children = (
+				BA462B422EDD09EB000C6FE6 /* README.md */,
 				BA3E9FEF2EDB958200C3C43B /* VocabLearner.xcdatamodeld */,
 				BA3E9FC22EDB94ED00C3C43B /* Wordy */,
 				BA3E9FD52EDB94EF00C3C43B /* WordyTests */,
@@ -242,6 +245,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BA462B432EDD09F4000C6FE6 /* README.md in Sources */,
 				BA3E9FF12EDB958200C3C43B /* VocabLearner.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
