@@ -1,86 +1,280 @@
-//
-//  ContentView.swift
-//  Wordy
-//
-//  Created by Henry on 11/29/25.
-//
-
 import SwiftUI
-import CoreData
 
 struct ContentView: View {
-    @Environment(\.managedObjectContext) private var viewContext
-
-    @FetchRequest(
-        sortDescriptors: [NSSortDescriptor(keyPath: \Item.timestamp, ascending: true)],
-        animation: .default)
-    private var items: FetchedResults<Item>
-
+    @StateObject private var speechService = SpeechRecognitionService()
+    @StateObject private var ttsService = TextToSpeechService()
+    @StateObject private var conversationManager: ConversationManager
+    @EnvironmentObject var coreDataManager: CoreDataManager
+    
+    @State private var showingPermissionAlert = false
+    
+    init() {
+        let speech = SpeechRecognitionService()
+        let tts = TextToSpeechService()
+        _conversationManager = StateObject(wrappedValue: ConversationManager(speechRecognition: speech, textToSpeech: tts))
+        _speechService = StateObject(wrappedValue: speech)
+        _ttsService = StateObject(wrappedValue: tts)
+    }
+    
     var body: some View {
         NavigationView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
-                    } label: {
-                        Text(item.timestamp!, formatter: itemFormatter)
+            VStack(spacing: 30) {
+                // Header
+                Text("Vocab Learner")
+                    .font(.system(size: 36, weight: .bold))
+                    .foregroundColor(.blue)
+                
+                Spacer()
+                
+                // Status Display
+                VStack(spacing: 15) {
+                    stateIndicator
+                    
+                    Text(conversationManager.statusMessage)
+                        .font(.title3)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                    
+                    if !conversationManager.capturedWord.isEmpty {
+                        Text(conversationManager.capturedWord)
+                            .font(.system(size: 48, weight: .bold))
+                            .foregroundColor(.blue)
+                    }
+                    
+                    if speechService.isListening {
+                        Text(speechService.recognizedText)
+                            .font(.title2)
+                            .foregroundColor(.gray)
+                            .padding()
                     }
                 }
-                .onDelete(perform: deleteItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
+                .frame(minHeight: 200)
+                
+                Spacer()
+                
+                // Main Action Button
+                mainActionButton
+                
+                // Cancel Button (shown when active)
+                if conversationManager.isActive {
+                    Button(action: {
+                        conversationManager.cancelConversation()
+                    }) {
+                        Text("Cancel")
+                            .font(.title3)
+                            .foregroundColor(.red)
+                            .padding()
                     }
                 }
+                
+                Spacer()
+                
+                // Navigation to Saved Words
+                NavigationLink(destination: SavedWordsView()) {
+                    HStack {
+                        Image(systemName: "book.fill")
+                        Text("View Saved Words")
+                    }
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .cornerRadius(12)
+                }
+                .padding(.horizontal, 30)
             }
-            Text("Select an item")
+            .padding()
+            .navigationBarHidden(true)
+        }
+        .alert("Permission Required", isPresented: $showingPermissionAlert) {
+            Button("Open Settings", action: openSettings)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Please enable Speech Recognition and Microphone access in Settings to use this app.")
+        }
+        .onAppear {
+            setupConversationCallbacks()
         }
     }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(context: viewContext)
-            newItem.timestamp = Date()
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
-            }
+    
+    // MARK: - View Components
+    
+    private var stateIndicator: some View {
+        HStack {
+            Circle()
+                .fill(stateColor)
+                .frame(width: 20, height: 20)
+            
+            Text(stateText)
+                .font(.headline)
+                .foregroundColor(stateColor)
         }
     }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            offsets.map { items[$0] }.forEach(viewContext.delete)
-
-            do {
-                try viewContext.save()
-            } catch {
-                // Replace this implementation with code to handle the error appropriately.
-                // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
-                let nsError = error as NSError
-                fatalError("Unresolved error \(nsError), \(nsError.userInfo)")
+    
+    private var mainActionButton: some View {
+        Button(action: handleMainAction) {
+            HStack {
+                Image(systemName: buttonIcon)
+                    .font(.title2)
+                Text(buttonText)
+                    .font(.title2)
+                    .fontWeight(.semibold)
             }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .frame(height: 70)
+            .background(buttonColor)
+            .cornerRadius(20)
+            .shadow(radius: 5)
+        }
+        .padding(.horizontal, 30)
+        .disabled(!conversationManager.canStart && !conversationManager.isActive)
+    }
+    
+    // MARK: - Computed Properties
+    
+    private var stateColor: Color {
+        switch conversationManager.currentState {
+        case .idle:
+            return .gray
+        case .listeningForPrompt, .waitingForWord:
+            return .blue
+        case .confirmingWord, .lookingUpWord:
+            return .orange
+        case .speakingDefinition:
+            return .green
+        case .error:
+            return .red
+        }
+    }
+    
+    private var stateText: String {
+        switch conversationManager.currentState {
+        case .idle:
+            return "Ready"
+        case .listeningForPrompt:
+            return "Prompting"
+        case .waitingForWord:
+            return "Listening"
+        case .confirmingWord:
+            return "Confirming"
+        case .lookingUpWord:
+            return "Looking Up"
+        case .speakingDefinition:
+            return "Speaking"
+        case .error:
+            return "Error"
+        }
+    }
+    
+    private var buttonText: String {
+        if conversationManager.isActive {
+            return "Listening..."
+        }
+        return "Start Learning"
+    }
+    
+    private var buttonIcon: String {
+        if speechService.isListening {
+            return "waveform"
+        }
+        return "mic.fill"
+    }
+    
+    private var buttonColor: Color {
+        if conversationManager.isActive {
+            return .orange
+        }
+        return .blue
+    }
+    
+    // MARK: - Actions
+    
+    private func handleMainAction() {
+        if speechService.permissionState != .authorized {
+            showingPermissionAlert = true
+            return
+        }
+        
+        if conversationManager.canStart {
+            conversationManager.startConversation()
+        }
+    }
+    
+    private func setupConversationCallbacks() {
+        // When a word is captured, we'll look it up (Phase 3)
+        conversationManager.onWordCaptured = { [weak conversationManager, weak coreDataManager] word in
+            guard let conversationManager = conversationManager,
+                  let coreDataManager = coreDataManager else { return }
+            
+            // TODO: Phase 3 - Look up word in dictionary
+            // For now, just use a placeholder definition
+            let placeholderDefinition = "A placeholder definition for testing purposes."
+            
+            // Speak the definition
+            conversationManager.speakDefinition(placeholderDefinition, forWord: word)
+            
+            // Save to Core Data
+            let wordItem = WordItem(word: word, definition: placeholderDefinition)
+            try? coreDataManager.saveWord(wordItem)
+        }
+    }
+    
+    private func openSettings() {
+        if let settingsURL = URL(string: UIApplication.openSettingsURLString) {
+            UIApplication.shared.open(settingsURL)
         }
     }
 }
 
-private let itemFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.dateStyle = .short
-    formatter.timeStyle = .medium
-    return formatter
-}()
+// MARK: - Saved Words View (Placeholder)
+struct SavedWordsView: View {
+    @EnvironmentObject var coreDataManager: CoreDataManager
+    @State private var words: [WordItem] = []
+    
+    var body: some View {
+        List {
+            if words.isEmpty {
+                Text("No words saved yet")
+                    .foregroundColor(.secondary)
+                    .italic()
+            } else {
+                ForEach(words) { word in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(word.word)
+                            .font(.headline)
+                        Text(word.definition)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.vertical, 4)
+                }
+                .onDelete(perform: deleteWords)
+            }
+        }
+        .navigationTitle("Saved Words")
+        .onAppear {
+            loadWords()
+        }
+    }
+    
+    private func loadWords() {
+        words = (try? coreDataManager.fetchAllWords()) ?? []
+    }
+    
+    private func deleteWords(at offsets: IndexSet) {
+        for index in offsets {
+            let word = words[index]
+            try? coreDataManager.deleteWord(word)
+        }
+        loadWords()
+    }
+}
 
+// MARK: - Preview
 #Preview {
-    ContentView().environment(\.managedObjectContext, PersistenceController.preview.container.viewContext)
+    ContentView()
+        .environmentObject(CoreDataManager(container: PersistenceController.preview.container))
 }

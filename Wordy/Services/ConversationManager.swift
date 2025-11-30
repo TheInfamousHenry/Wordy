@@ -86,13 +86,19 @@ class ConversationManager: ObservableObject {
         currentState = .confirmingWord(capturedWord)
         statusMessage = "Confirming: \(capturedWord)"
         
+        // Stop listening immediately
+        speechRecognition.stopListening()
+        
         // Speak the word back for confirmation
         textToSpeech.speak("Did you say \(capturedWord)?")
         
-        // After confirmation is spoken, notify that word is captured
+        // After confirmation is spoken, look up the word
         textToSpeech.onSpeechFinished = { [weak self] in
             guard let self = self else { return }
-            self.statusMessage = "Word captured: \(self.capturedWord)"
+            self.currentState = .lookingUpWord(self.capturedWord)
+            self.statusMessage = "Looking up: \(self.capturedWord)"
+            
+            // Notify that word is ready to be looked up
             self.onWordCaptured?(self.capturedWord)
         }
     }
@@ -107,7 +113,11 @@ class ConversationManager: ObservableObject {
         let fullMessage = "The definition of \(word) is: \(definition)"
         textToSpeech.speak(fullMessage, rate: 0.45) // Slightly slower for definition
         
-        textToSpeech.onSpeechFinished = { [weak self] in
+        // Clear the callback first to avoid loops
+        textToSpeech.onSpeechFinished = nil
+        
+        // After speaking, complete the conversation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             self?.completeConversation()
         }
     }
@@ -116,6 +126,13 @@ class ConversationManager: ObservableObject {
         currentState = .idle
         statusMessage = "Word saved! Tap to learn another"
         capturedWord = ""
+        
+        // Clear all callbacks to prevent auto-restart
+        textToSpeech.onSpeechFinished = nil
+        speechRecognition.onSpeechRecognized = nil
+        
+        // Re-setup callbacks for next use
+        setupCallbacks()
     }
     
     // MARK: - Error Handling
@@ -144,6 +161,13 @@ class ConversationManager: ObservableObject {
         currentState = .idle
         statusMessage = "Tap to start learning a new word"
         capturedWord = ""
+        
+        // Clear all callbacks
+        textToSpeech.onSpeechFinished = nil
+        textToSpeech.onSpeechStarted = nil
+        
+        // Re-setup speech recognition callback
+        setupCallbacks()
     }
     
     func cancelConversation() {

@@ -1,5 +1,14 @@
+//
+//  TextToSpeechService.swift
+//  Wordy
+//
+//  Created by Henry on 11/30/25.
+//
+
+
 import Foundation
 import AVFoundation
+import Combine
 
 class TextToSpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     @Published var isSpeaking = false

@@ -1,6 +1,15 @@
+//
+//  SpeechRecognitionService.swift
+//  Wordy
+//
+//  Created by Henry on 11/30/25.
+//
+
+
 import Foundation
 import Speech
 import AVFoundation
+import Combine
 
 class SpeechRecognitionService: ObservableObject {
     @Published var isListening = false
@@ -94,14 +103,28 @@ class SpeechRecognitionService: ObservableObject {
                     self.recognizedText = transcription
                 }
                 isFinal = result.isFinal
+                
+                // Stop after getting a result (more responsive)
+                if !transcription.isEmpty {
+                    // Give it a moment to finalize, then stop
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                        guard let self = self, self.isListening else { return }
+                        let finalText = self.recognizedText
+                        self.stopListening()
+                        if !finalText.isEmpty {
+                            self.onSpeechRecognized?(finalText)
+                        }
+                    }
+                }
             }
             
             if error != nil || isFinal {
+                let finalText = self.recognizedText
                 self.stopListening()
                 
-                if isFinal, !self.recognizedText.isEmpty {
+                if isFinal, !finalText.isEmpty {
                     DispatchQueue.main.async {
-                        self.onSpeechRecognized?(self.recognizedText)
+                        self.onSpeechRecognized?(finalText)
                     }
                 }
                 
@@ -154,3 +177,5 @@ class SpeechRecognitionService: ObservableObject {
         stopListening()
     }
 }
+
+

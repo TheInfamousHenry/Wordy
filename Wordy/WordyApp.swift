@@ -9,13 +9,15 @@ import SwiftUI
 import CoreData
 
 @main
-struct WordyApp: App {
+struct VocabLearnerApp: App {
     let persistenceController = PersistenceController.shared
-
+    @StateObject private var coreDataManager = CoreDataManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environmentObject(coreDataManager)
         }
     }
 }
