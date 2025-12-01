@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		BA3E9FF12EDB958200C3C43B /* VocabLearner.xcdatamodeld in Sources */ = {isa = PBXBuildFile; fileRef = BA3E9FEF2EDB958200C3C43B /* VocabLearner.xcdatamodeld */; };
-		BA462B432EDD09F4000C6FE6 /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = BA462B422EDD09EB000C6FE6 /* README.md */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -245,7 +244,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BA462B432EDD09F4000C6FE6 /* README.md in Sources */,
 				BA3E9FF12EDB958200C3C43B /* VocabLearner.xcdatamodeld in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

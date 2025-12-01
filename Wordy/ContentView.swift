@@ -11,7 +11,9 @@ struct ContentView: View {
     init() {
         let speech = SpeechRecognitionService()
         let tts = TextToSpeechService()
-        _conversationManager = StateObject(wrappedValue: ConversationManager(speechRecognition: speech, textToSpeech: tts))
+        // Create a wake word detector instance. If your project defines a specific type, replace `DefaultWakeWordDetector()` accordingly.
+        let wakeWordDetector = WakeWordDetector()
+        _conversationManager = StateObject(wrappedValue: ConversationManager(speechRecognition: speech, textToSpeech: tts, wakeWordDetector: wakeWordDetector))
         _speechService = StateObject(wrappedValue: speech)
         _ttsService = StateObject(wrappedValue: tts)
     }

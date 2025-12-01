@@ -3,19 +3,22 @@ import Combine
 
 class ConversationManager: ObservableObject {
     @Published var currentState: AppState = .idle
-    @Published var statusMessage = "Tap to start learning a new word"
+    @Published var statusMessage = "Say 'Hey Wordy' to learn a new word"
     @Published var capturedWord: String = ""
+    @Published var isWakeWordModeActive = false
     
     private let speechRecognition: SpeechRecognitionService
     private let textToSpeech: TextToSpeechService
+    private let wakeWordDetector: WakeWordDetector
     private var cancellables = Set<AnyCancellable>()
     
     // Callback for when a word is successfully captured and confirmed
     var onWordCaptured: ((String) -> Void)?
     
-    init(speechRecognition: SpeechRecognitionService, textToSpeech: TextToSpeechService) {
+    init(speechRecognition: SpeechRecognitionService, textToSpeech: TextToSpeechService, wakeWordDetector: WakeWordDetector) {
         self.speechRecognition = speechRecognition
         self.textToSpeech = textToSpeech
+        self.wakeWordDetector = wakeWordDetector
         setupCallbacks()
     }
     
@@ -30,6 +33,15 @@ class ConversationManager: ObservableObject {
             self?.handleError(error)
         }
         
+        // Handle wake word detection
+        wakeWordDetector.onWakeWordDetected = { [weak self] in
+            self?.handleWakeWordDetected()
+        }
+        
+        wakeWordDetector.onError = { [weak self] error in
+            self?.handleError(error)
+        }
+        
         // Monitor listening state
         speechRecognition.$isListening
             .sink { [weak self] isListening in
@@ -40,7 +52,42 @@ class ConversationManager: ObservableObject {
             .store(in: &cancellables)
     }
     
-    // MARK: - Conversation Flow
+    // MARK: - Wake Word Mode
+    func enableWakeWordMode() {
+        guard speechRecognition.permissionState == .authorized else {
+            currentState = .error("Please enable speech recognition in Settings")
+            statusMessage = "Speech recognition not authorized"
+            return
+        }
+        
+        isWakeWordModeActive = true
+        currentState = .idle
+        statusMessage = "Say 'Hey Wordy' to learn a new word"
+        wakeWordDetector.startWakeWordDetection()
+    }
+    
+    func disableWakeWordMode() {
+        isWakeWordModeActive = false
+        wakeWordDetector.stopWakeWordDetection()
+        statusMessage = "Wake word mode disabled"
+        reset()
+    }
+    
+    private func handleWakeWordDetected() {
+        // Wake word detected - start conversation
+        currentState = .waitingForWord
+        statusMessage = "Wake word detected! Say a word..."
+        
+        // Give a brief audio cue
+        textToSpeech.speak("Yes?", rate: 0.6)
+        
+        // After audio cue, start listening for the word
+        textToSpeech.onSpeechFinished = { [weak self] in
+            self?.startListeningForWord()
+        }
+    }
+    
+    // MARK: - Manual Conversation Flow (for button press)
     func startConversation() {
         guard speechRecognition.permissionState == .authorized else {
             currentState = .error("Please enable speech recognition in Settings")
@@ -123,8 +170,6 @@ class ConversationManager: ObservableObject {
     }
     
     private func completeConversation() {
-        currentState = .idle
-        statusMessage = "Word saved! Tap to learn another"
         capturedWord = ""
         
         // Clear all callbacks to prevent auto-restart
@@ -133,6 +178,17 @@ class ConversationManager: ObservableObject {
         
         // Re-setup callbacks for next use
         setupCallbacks()
+        
+        // Return to appropriate mode
+        if isWakeWordModeActive {
+            currentState = .idle
+            statusMessage = "Say 'Hey Wordy' to learn another word"
+            // Resume wake word detection
+            wakeWordDetector.resumeWakeWordDetection()
+        } else {
+            currentState = .idle
+            statusMessage = "Word saved! Tap to learn another"
+        }
     }
     
     // MARK: - Error Handling
@@ -158,8 +214,6 @@ class ConversationManager: ObservableObject {
     func reset() {
         speechRecognition.stopListening()
         textToSpeech.stopSpeaking()
-        currentState = .idle
-        statusMessage = "Tap to start learning a new word"
         capturedWord = ""
         
         // Clear all callbacks
@@ -168,6 +222,15 @@ class ConversationManager: ObservableObject {
         
         // Re-setup speech recognition callback
         setupCallbacks()
+        
+        if isWakeWordModeActive {
+            currentState = .idle
+            statusMessage = "Say 'Hey Wordy' to learn a new word"
+            wakeWordDetector.resumeWakeWordDetection()
+        } else {
+            currentState = .idle
+            statusMessage = "Tap to start learning a new word"
+        }
     }
     
     func cancelConversation() {
