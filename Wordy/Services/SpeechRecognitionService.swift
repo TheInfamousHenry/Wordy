@@ -72,7 +72,8 @@ class SpeechRecognitionService: ObservableObject {
         // Configure audio session
         let audioSession = AVAudioSession.sharedInstance()
         do {
-            try audioSession.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // Use playAndRecord to allow both recording and playback
+            try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .allowBluetooth, .duckOthers])
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
             onError?("Audio session setup failed: \(error.localizedDescription)")

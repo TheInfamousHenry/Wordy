@@ -30,15 +30,30 @@ class TextToSpeechService: NSObject, ObservableObject, AVSpeechSynthesizerDelega
     // MARK: - Audio Session Configuration
     private func configureAudioSession() {
         do {
-            try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [])
+            // Use .playAndRecord with .defaultToSpeaker to allow both recording and playback
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
             try AVAudioSession.sharedInstance().setActive(true)
         } catch {
             print("Failed to configure audio session: \(error)")
         }
     }
     
+    private func activatePlaybackMode() {
+        do {
+            // Ensure audio session is active and configured for playback
+            // Use playAndRecord with defaultToSpeaker so audio plays through speaker
+            try AVAudioSession.sharedInstance().setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+            try AVAudioSession.sharedInstance().setActive(true)
+        } catch {
+            print("Failed to activate playback mode: \(error)")
+        }
+    }
+    
     // MARK: - Speech Methods
     func speak(_ text: String, rate: Float = 0.5, voice: AVSpeechSynthesisVoice? = nil) {
+        // Activate playback mode before speaking
+        activatePlaybackMode()
+        
         let utterance = AVSpeechUtterance(string: text)
         utterance.rate = rate // 0.0 (slowest) to 1.0 (fastest), default is ~0.5
         utterance.pitchMultiplier = 1.0

@@ -98,6 +98,15 @@ struct ContentView: View {
         }
         .onAppear {
             setupConversationCallbacks()
+            // Enable wake word mode on app launch
+            if speechService.permissionState == .authorized {
+                conversationManager.enableWakeWordMode()
+            }
+        }
+        .onChange(of: speechService.permissionState) { newState in
+            if newState == .authorized && !conversationManager.isWakeWordModeActive {
+                conversationManager.enableWakeWordMode()
+            }
         }
     }
     
@@ -206,21 +215,35 @@ struct ContentView: View {
     }
     
     private func setupConversationCallbacks() {
-        // When a word is captured, we'll look it up (Phase 3)
+        // When a word is captured, we'll look it up
         conversationManager.onWordCaptured = { [weak conversationManager, weak coreDataManager] word in
             guard let conversationManager = conversationManager,
                   let coreDataManager = coreDataManager else { return }
             
-            // TODO: Phase 3 - Look up word in dictionary
-            // For now, just use a placeholder definition
-            let placeholderDefinition = "A placeholder definition for testing purposes."
-            
-            // Speak the definition
-            conversationManager.speakDefinition(placeholderDefinition, forWord: word)
-            
-            // Save to Core Data
-            let wordItem = WordItem(word: word, definition: placeholderDefinition)
-            try? coreDataManager.saveWord(wordItem)
+            // Look up word in dictionary
+            Task {
+                let dictionaryService = DictionaryService()
+                do {
+                    let definition = try await dictionaryService.lookupWord(word)
+                    
+                    // Speak the definition
+                    await MainActor.run {
+                        conversationManager.speakDefinition(definition, forWord: word)
+                        
+                        // Save to Core Data
+                        let wordItem = WordItem(word: word, definition: definition)
+                        try? coreDataManager.saveWord(wordItem)
+                    }
+                } catch {
+                    let errorMessage = error.localizedDescription
+                    await MainActor.run {
+                        conversationManager.currentState = .error(errorMessage)
+                        conversationManager.statusMessage = "Failed to lookup word: \(errorMessage)"
+                        // Use the TTS service directly
+                        ttsService.speak("Sorry, I couldn't find a definition for \(word).")
+                    }
+                }
+            }
         }
     }
     
