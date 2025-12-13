@@ -134,7 +134,7 @@ When reading books, articles, or documents, encountering unfamiliar words disrup
 
 ---
 
-### ✅ **Phase 3: Wake Word & Always-On Listening** (COMPLETED)
+### 🔄 **Phase 3: Wake Word & Always-On Listening** (IN PROGRESS)
 **Status:** Current Phase
 
 **Objectives:**
@@ -148,10 +148,10 @@ When reading books, articles, or documents, encountering unfamiliar words disrup
 - ✅ Enhance SpeechRecognitionService for continuous listening
 - ✅ Implement wake word detection algorithm
 - ✅ Add audio feedback for wake word activation
-- ✅ Optimize battery usage during listening
+- ⏳ Optimize battery usage during listening
 - ✅ Handle app backgrounding
 - ✅ Add toggle for always-listening mode
-- ✅ Test wake word accuracy
+- ⏳ Test wake word accuracy
 
 **Expected Deliverables:**
 - WakeWordDetector service
@@ -161,7 +161,7 @@ When reading books, articles, or documents, encountering unfamiliar words disrup
 
 ---
 
-### 🔄 **Phase 4: Dictionary Integration** (IN PROGRESS)
+### 📚 **Phase 4: Dictionary Integration** (UPCOMING)
 
 **Objectives:**
 - Select and integrate dictionary API
@@ -350,30 +350,15 @@ Users will be prompted on first launch.
 
 ---
 
-## 🎓 Learning Outcomes
-
-This project demonstrates:
-- iOS native app development with Swift/SwiftUI
-- Speech recognition and synthesis integration
-- Core Data persistence
-- RESTful API integration
-- State management with Combine
-- MVVM architecture pattern
-- Service-oriented design
-- Audio session management
-- User permission handling
-
----
-
 ## 📝 License
 
-This project is developed as an educational application.
+This project is developed under MIT liscense.
 
 ---
 
 ## 👥 Contributing
 
-Currently in active development. Feature requests and bug reports welcome!
+Currently in active development. Feature requests and bug reports welcome! Contact me if you would like to assist in development.
 
 ---
 
